@@ -1,0 +1,20 @@
+tumor-cell-simulation/
+├── LICENSE
+├── README.md
+├── CONTRIBUTING.md
+├── simulate.jl
+├── src/
+│   ├── ReactionStruct.jl
+│   ├── SSA_Struct.jl
+│   ├── initialize_ssa.jl
+│   ├── compute_total_prob.jl
+│   ├── update_state.jl
+│   ├── select_reaction.jl
+│   ├── run_ssa.jl
+│   └── create_reactions.jl
+├── test/
+│   ├── test_reactions.jl
+│   └── test_ssa.jl
+└── docs/
+    ├── index.md
+    └── usage.md
