@@ -1,0 +1,116 @@
+using Random
+using Plots
+using Distributions
+
+mutable struct ReactionStruct
+    transitions::Vector{Int}
+    reac_prob::Function
+end
+
+mutable struct SSA_Struct
+    reactions::Vector{ReactionStruct}
+    state::Vector{Int}
+    t::Float64
+    time_points::Vector{Float64}
+    hit_counts::Vector{Vector{Int}}
+    radiotherapy_time::Float64
+    radiotherapy_done::Bool
+    ep_replenished::Bool
+end
+
+function initialize_ssa(reactions, initial_state, radiotherapy_time)
+    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)], radiotherapy_time, false, false)
+end
+
+function compute_total_prob(reactions, state, radiotherapy_done, ep_replenished)
+    sum(r.reac_prob(state, radiotherapy_done, ep_replenished) for r in reactions)
+end
+
+function update_state!(ssa::SSA_Struct, reaction_index)
+    ssa.state .+= ssa.reactions[reaction_index].transitions
+    push!(ssa.hit_counts, copy(ssa.state))
+    
+    # Check if EP cells have been replenished after radiotherapy
+    if ssa.radiotherapy_done && !ssa.ep_replenished && ssa.state[1] > 0
+        ssa.ep_replenished = true
+    end
+end
+
+function select_reaction(reactions, state, total_prob, radiotherapy_done, ep_replenished)
+    r = rand() * total_prob
+    cumulative_sum = 0.0
+    for (i, reaction) in enumerate(reactions)
+        cumulative_sum += reaction.reac_prob(state, radiotherapy_done, ep_replenished)
+        if cumulative_sum > r
+            return i
+        end
+    end
+end
+
+function run_ssa!(ssa::SSA_Struct, max_time)
+    while ssa.t < max_time
+        if !ssa.radiotherapy_done && ssa.t >= ssa.radiotherapy_time
+            ssa.state[1] = 0  # Set EP cells to 0
+            ssa.radiotherapy_done = true
+        end
+
+        total_prob = compute_total_prob(ssa.reactions, ssa.state, ssa.radiotherapy_done, ssa.ep_replenished)
+        if total_prob == 0
+            break
+        end
+
+        dt = rand(Exponential(1 / total_prob))
+        ssa.t += dt
+        push!(ssa.time_points, ssa.t)
+
+        reaction_index = select_reaction(ssa.reactions, ssa.state, total_prob, ssa.radiotherapy_done, ssa.ep_replenished)
+        update_state!(ssa, reaction_index)
+    end
+end
+
+function create_reactions(rates)
+    return [
+        ReactionStruct([1, 0, 0], (x, rt_done, ep_replenished) -> (rt_done && !ep_replenished) ? 0 : rates[1] * x[1]),  # EP birth
+        ReactionStruct([-1, 0, 0], (x, rt_done, ep_replenished) -> rates[2] * x[1]),  # EP death
+        ReactionStruct([-1, 1, 0], (x, rt_done, ep_replenished) -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct([-1, 0, 1], (x, rt_done, ep_replenished) -> rates[4] * x[1]),  # EP to Diff
+
+        ReactionStruct([0, 1, 0], (x, rt_done, ep_replenished) -> rates[5] * x[2]),  # MP birth
+        ReactionStruct([0, -1, 0], (x, rt_done, ep_replenished) -> rates[6] * x[2]),  # MP death
+        ReactionStruct([0, -1, 1], (x, rt_done, ep_replenished) -> rates[7] * x[2]),  # MP to Diff
+        ReactionStruct([1, -1, 0], (x, rt_done, ep_replenished) -> rates[8] * x[2]),  # MP to EP
+
+        ReactionStruct([0, 0, 1], (x, rt_done, ep_replenished) -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct([0, 0, -1], (x, rt_done, ep_replenished) -> rates[10] * x[3]),  # Diff death
+        ReactionStruct([1, 0, -1], (x, rt_done, ep_replenished) -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct([0, 1, -1], (x, rt_done, ep_replenished) -> rates[12] * x[3])   # Diff to MP
+    ]
+end
+
+function run_simulation(initial_state, rates, max_time, radiotherapy_time)
+    reactions = create_reactions(rates)
+    ssa = initialize_ssa(reactions, initial_state, radiotherapy_time)
+    run_ssa!(ssa, max_time)
+    return ssa
+end
+
+# Example: Transition rates and initial state
+initial_state = [100, 100, 100]
+rates = [0.2, 0.05, 0.1, 0.05, 0.05, 0.3, 0.02, 0.02, 0.02, 0.008, 0.06, 0.01]
+radiotherapy_time = 50.0
+
+# Run simulation
+ssa = run_simulation(initial_state, rates, 100.0, radiotherapy_time)
+
+# Create plot
+time_points = ssa.time_points
+hit_counts = ssa.hit_counts
+
+# Separate state counts
+state1_hits = [count[1] for count in hit_counts]
+state2_hits = [count[2] for count in hit_counts]
+state3_hits = [count[3] for count in hit_counts]
+
+plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot!(time_points, state2_hits, label="MP", color = "red")
+plot!(time_points, state3_hits, label="Diff", color = "blue")
