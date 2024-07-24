@@ -71,8 +71,8 @@ function create_reactions(rates)
 
         ReactionStruct([0, 1, 0], (x, rt_done) -> rates[5] * x[2]),  # MP birth
         ReactionStruct([0, -1, 0], (x, rt_done) -> rates[6] * x[2]),  # MP death
-        ReactionStruct([0, -1, 1], (x, rt_done) -> rates[7] * x[2]),  # MP zu Diff
-        ReactionStruct([1, -1, 0], (x, rt_done) -> rates[8] * x[2]),  # MP zu EP
+        ReactionStruct([1, -1, 0], (x, rt_done) -> rates[7] * x[2]),  # MP zu EP
+        ReactionStruct([0, -1, 1], (x, rt_done) -> rates[8] * x[2]),  # MP zu Diff
 
         ReactionStruct([0, 0, 1], (x, rt_done) -> rates[9] * x[3]),  # Diff birth
         ReactionStruct([0, 0, -1], (x, rt_done) -> rates[10] * x[3]),  # Diff death
@@ -89,8 +89,8 @@ function run_simulation(initial_state, rates, max_time, radiotherapy_time)
 end
 
 # Beispiel: Übergangsraten und Anfangszustand
-initial_state = [100, 100, 100]
-rates = [0.2, 0.05, 0.1, 0.05, 0.05, 0.3, 0.02, 0.02, 0.02, 0.008, 0.06, 0.01]
+initial_state = [100, 50, 25]
+rates = [0.1, 0.08, 0.05, 0.02, 0.03, 0.02, 0.1, 0.01, 0.01, 0.05, 0.03, 0.005]
 radiotherapy_time = 50.0
 
 # Simulation ausführen

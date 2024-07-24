@@ -28,7 +28,7 @@ function update_state!(ssa::SSA_Struct, reaction_index)
     push!(ssa.hit_counts, copy(ssa.state)) 
 end
 
-function select_reaction(reactions, state, total_prob)
+function select_reaction(reactions, state, total_prob) # gibt es eine sample Funktion in Julia?
     r = rand() * total_prob
     cumulative_sum = 0.0
     for (i, reaction) in enumerate(reactions)
@@ -59,18 +59,18 @@ function create_reactions(rates)
     return [
         ReactionStruct([1, 0, 0], x -> rates[1] * x[1]),  # EP birth
         ReactionStruct([-1, 0, 0], x -> rates[2] * x[1]),  # EP death
-        ReactionStruct([-1, 1, 0], x -> rates[3] * x[1]),  # EP zu MP
-        ReactionStruct([-1, 0, 1], x -> rates[4] * x[1]),  # EP zu Diff
+        ReactionStruct([-1, 1, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct([-1, 0, 1], x -> rates[4] * x[1]),  # EP to Diff
 
         ReactionStruct([0, 1, 0], x -> rates[5] * x[2]),  # MP birth
         ReactionStruct([0, -1, 0], x -> rates[6] * x[2]),  # MP death
-        ReactionStruct([0, -1, 1], x -> rates[7] * x[2]),  # MP zu Diff
-        ReactionStruct([1, -1, 0], x -> rates[8] * x[2]),  # MP zu EP
+        ReactionStruct([1, -1, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct([0, -1, 1], x -> rates[8] * x[2]),  # MP to Diff
 
         ReactionStruct([0, 0, 1], x -> rates[9] * x[3]),  # Diff birth
         ReactionStruct([0, 0, -1], x -> rates[10] * x[3]),  # Diff death
-        ReactionStruct([1, 0, -1], x -> rates[11] * x[3]),  # Diff zu EP
-        ReactionStruct([0, 1, -1], x -> rates[12] * x[3])  # Diff zu MP
+        ReactionStruct([1, 0, -1], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct([0, 1, -1], x -> rates[12] * x[3])  # Diff to MP
     ]
 end
 
@@ -83,10 +83,10 @@ end
 
 # Beispiel: Übergangsraten und Anfangszustand
 initial_state = [100, 50, 25]
-rates = [0.2, 0.05, 0.1, 0.05, 0.05, 0.3, 0.02, 0.02, 0.02, 0.008, 0.06, 0.01]
+rates = [0.1, 0.08, 0.05, 0.02, 0.03, 0.02, 0.1, 0.01, 0.01, 0.05, 0.03, 0.005]
 
 # Simulation ausführen
-ssa = run_simulation(initial_state, rates, 10.0)
+ssa = run_simulation(initial_state, rates, 100.0)
 
 # Plot erstellen
 time_points = ssa.time_points

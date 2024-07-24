@@ -1,0 +1,107 @@
+using Random
+using Plots
+using Distributions
+
+mutable struct ReactionStruct
+    transitions::Vector{Int}
+    reac_prob::Function
+end
+
+mutable struct SSA_Struct
+    reactions::Vector{ReactionStruct}
+    state::Vector{Int}
+    t::Float64
+    time_points::Vector{Float64}  
+    hit_counts::Vector{Vector{Int}}  
+end
+
+function initialize_ssa(reactions, initial_state)
+    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
+end
+
+function compute_total_prob(reactions, state)
+    sum(r.reac_prob(state) for r in reactions)
+end
+
+function update_state!(ssa::SSA_Struct, reaction_index)
+    ssa.state .+= ssa.reactions[reaction_index].transitions
+    push!(ssa.hit_counts, copy(ssa.state)) 
+end
+
+function select_reaction(reactions, state, total_prob)
+    r = rand() * total_prob
+    cumulative_sum = 0.0
+    for (i, reaction) in enumerate(reactions)
+        cumulative_sum += reaction.reac_prob(state)
+        if cumulative_sum > r
+            return i
+        end
+    end
+end
+
+function run_ssa!(ssa::SSA_Struct, max_time)
+    while ssa.t < max_time
+        total_prob = compute_total_prob(ssa.reactions, ssa.state)
+        if total_prob == 0
+            break
+        end
+        dt = rand(Exponential(1 / total_prob))
+        ssa.t += dt
+        push!(ssa.time_points, ssa.t)
+        reaction_index = select_reaction(ssa.reactions, ssa.state, total_prob)
+        update_state!(ssa, reaction_index)
+    end
+end
+
+function create_reactions(rates)
+    rock1_effect = (x) -> x[4] > 0 ? 0.25 * rates[1] : rates[1]
+    return [
+        ReactionStruct([1, 0, 0, 0], x ->  rock1_effect(x) * x[1]),  # EP birth with ROCK1 effect
+        ReactionStruct([-1, 0, 0, 0], x -> rates[2] * x[1]),  # EP death
+        ReactionStruct([-1, 1, 0, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct([-1, 0, 1, 0], x -> rates[4] * x[1]),  # EP to Diff
+
+        ReactionStruct([0, 1, 0, 0], x -> rates[5] * x[2]),  # MP birth
+        ReactionStruct([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP death
+        ReactionStruct([1, -1, 0, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct([0, -1, 1, 0], x -> rates[8] * x[2]),  # MP to Diff
+
+        ReactionStruct([0, 0, 1, 0], x -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct([0, 0, -1, 0], x -> rates[10] * x[3]),  # Diff death
+        ReactionStruct([1, 0, -1, 0], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct([0, 1, -1, 0], x -> rates[12] * x[3]),  # Diff to MP
+
+        ReactionStruct([0, 0, 0, -1], x -> rates[13] * x[4])  # ROCK1 Verfall
+    ]
+end
+
+function run_simulation(initial_state, rates, max_time)
+    reactions = create_reactions(rates)
+    ssa = initialize_ssa(reactions, initial_state)
+    run_ssa!(ssa, max_time)
+    return ssa
+end
+
+# Beispiel:
+initial_state = [100, 50, 25, 100]  # EP, MP, Diff, ROCK1
+rates = [0.1, 0.08, 0.05, 0.02, 0.03, 0.02, 0.1, 0.01, 0.01, 0.05, 0.03, 0.005, 0.15]
+
+# Simulation ausführen
+ssa = run_simulation(initial_state, rates, 100.0)
+
+# Plot erstellen
+time_points = ssa.time_points
+hit_counts = ssa.hit_counts
+
+# Daten für die Plots extrahieren
+rock1_hits = [count[4] for count in hit_counts]
+
+# Plot für ROCK1
+p1 = plot(time_points, rock1_hits, label="ROCK1", xlabel="Time", ylabel="# of ROCK1", title="# of ROCK1 vs Time", color = "purple")
+
+# Plot für die anderen Zellen
+p2 = plot(time_points, [count[1] for count in hit_counts], label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot!(p2, time_points, [count[2] for count in hit_counts], label="MP", color="red")
+plot!(p2, time_points, [count[3] for count in hit_counts], label="Diff", color="blue")
+
+plot(p1, p2, layout=(2,1))
