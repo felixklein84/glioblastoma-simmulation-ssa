@@ -2,6 +2,8 @@ using Random
 using Plots
 using Distributions
 
+Random.seed!(1234)
+
 mutable struct ReactionStruct
     transitions::Vector{Int}
     reac_prob::Function
@@ -82,11 +84,16 @@ function run_simulation(initial_state, rates, max_time)
 end
 
 # Beispiel: Übergangsraten und Anfangszustand
-initial_state = [100, 50, 25]
-rates = [0.1, 0.08, 0.05, 0.02, 0.03, 0.02, 0.1, 0.01, 0.01, 0.05, 0.03, 0.005]
+initial_state = [10, 10, 10]
+rates = [
+    0.01, 0, 0.0265, 0.0008,
+    0,    0, 0.0175, 0.0121, 
+    0,    0, 0.0018, 0.0201
+    ]
+run_time = 300.0
 
 # Simulation ausführen
-ssa = run_simulation(initial_state, rates, 100.0)
+ssa = run_simulation(initial_state, rates, run_time)
 
 # Plot erstellen
 time_points = ssa.time_points
@@ -97,6 +104,22 @@ state1_hits = [count[1] for count in hit_counts]
 state2_hits = [count[2] for count in hit_counts]
 state3_hits = [count[3] for count in hit_counts]
 
-plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot1 = plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
 plot!(time_points, state2_hits, label="MP", color = "red")
 plot!(time_points, state3_hits, label="Diff", color = "blue")
+
+total_cells = [sum(count) for count in hit_counts]
+norm_state1_hits = state1_hits ./ total_cells
+norm_state2_hits = state2_hits ./ total_cells
+norm_state3_hits = state3_hits ./ total_cells
+
+cumulative_norm_state2_hits = norm_state1_hits + norm_state2_hits
+cumulative_norm_state3_hits = cumulative_norm_state2_hits + norm_state3_hits
+
+plot2 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="EP", xlabel="Time", ylabel="Proportion", title="Proportion of tumor cells vs Time", color="green")
+plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fillalpha=0.3, label="MP", color="red")
+plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
+
+display(plot1)
+display(plot2)
+display(plot(plot1, plot2, layout=(1, 2)))

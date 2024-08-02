@@ -1,0 +1,15 @@
+using LinearAlgebra
+
+P=[
+    0.671600370027752	0.318223866790009	0.010175763182239
+    0.211141060197664	0.643306379155436	0.1455525606469
+    0.022680412371134	0.241237113402062	0.736082474226804
+    ]
+
+eig = eigen(transpose(P))
+
+eigenwerte = eig.values
+eigenvektoren = eig.vectors
+
+eigenvektoren[:,3]
+sum(P[3,:])

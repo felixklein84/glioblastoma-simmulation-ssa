@@ -2,6 +2,8 @@ using Random
 using Plots
 using Distributions
 
+Random.seed!(1234)
+
 mutable struct ReactionStruct
     transitions::Vector{Int}
     reac_prob::Function
@@ -44,7 +46,7 @@ end
 function run_ssa!(ssa::SSA_Struct, max_time)
     while ssa.t < max_time
         if !ssa.radiotherapy_done && ssa.t >= ssa.radiotherapy_time
-            ssa.state[1] = 0  # Set EP cells to 0
+            ssa.state[1] = round(Int, 0.0952380952380952 * ssa.state[1])  # Set EP cells to 9%
             ssa.radiotherapy_done = true
         end
 
@@ -89,12 +91,12 @@ function run_simulation(initial_state, rates, max_time, radiotherapy_time)
 end
 
 # Beispiel: Übergangsraten und Anfangszustand
-initial_state = [100, 50, 25]
-rates = [0.1, 0.08, 0.05, 0.02, 0.03, 0.02, 0.1, 0.01, 0.01, 0.05, 0.03, 0.005]
-radiotherapy_time = 50.0
+initial_state = [10, 10, 10] # EP, MP, Diff
+rates = [0.01, 0, 0.0265, 0.0008, 0, 0, 0.0175, 0.0121, 0, 0, 0.0018, 0.0201]
+radiotherapy_time = 100.0
 
 # Simulation ausführen
-ssa = run_simulation(initial_state, rates, 100.0, radiotherapy_time)
+ssa = run_simulation(initial_state, rates, 300.0, radiotherapy_time)
 
 # Plot erstellen
 time_points = ssa.time_points
