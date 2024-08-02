@@ -96,7 +96,7 @@ function run_simulation(initial_state, rates, max_time, radiotherapy_time)
     return ssa
 end
 
-# Beispiel: Übergangsraten und Anfangszustand
+# Beispiel: 
 initial_state = [10, 10, 10] # EP, MP, Diff
 rates = [
     0.01, 0, 0.0265, 0.0008,
@@ -110,7 +110,6 @@ run_time = 300.0
 # Simulation ausführen
 ssa = run_simulation(initial_state, rates, run_time, radiotherapy_time)
 
-# Plot erstellen
 time_points = ssa.time_points
 hit_counts = ssa.hit_counts
 
@@ -119,12 +118,12 @@ state1_hits = [count[1] for count in hit_counts]
 state2_hits = [count[2] for count in hit_counts]
 state3_hits = [count[3] for count in hit_counts]
 
-# Plot für Zustände
+# Plot für Anzahl der Zustände
 plot1 =plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
 plot!(time_points, state2_hits, label="MP", color = "red")
 plot!(time_points, state3_hits, label="Diff", color = "blue")
 
-# Plot Anteil der Zustände
+# Plot für Anteil der Zustände
 total_cells = [sum(count) for count in hit_counts]
 norm_state1_hits = state1_hits ./ total_cells
 norm_state2_hits = state2_hits ./ total_cells
