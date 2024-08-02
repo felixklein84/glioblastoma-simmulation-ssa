@@ -12,4 +12,3 @@ eigenwerte = eig.values
 eigenvektoren = eig.vectors
 
 eigenvektoren[:,3]
-sum(P[3,:])
