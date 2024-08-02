@@ -99,12 +99,12 @@ ssa = run_simulation(initial_state, rates, run_time)
 
 time_points = ssa.time_points
 hit_counts = ssa.hit_counts
-rock1_hits = [count[4] for count in hit_counts]
 
 # Anzahl der Zustände trennen
 state1_hits = [count[1] for count in hit_counts]
 state2_hits = [count[2] for count in hit_counts]
 state3_hits = [count[3] for count in hit_counts]
+rock1_hits = [count[4] for count in hit_counts]
 
 # Plot für ROCK1
 plot1 = plot(time_points, rock1_hits, label="ROCK1", xlabel="Time", ylabel="# of ROCK1", title="# of ROCK1 vs Time", color = "purple")
@@ -115,7 +115,7 @@ plot!(time_points, state2_hits, label="MP", color = "red")
 plot!(time_points, state3_hits, label="Diff", color = "blue")
 
 # Plot Anteil der Zustände
-total_cells = [sum(count) for count in hit_counts]
+total_cells = state1_hits .+ state2_hits .+ state3_hits
 norm_state1_hits = state1_hits ./ total_cells
 norm_state2_hits = state2_hits ./ total_cells
 norm_state3_hits = state3_hits ./ total_cells
@@ -128,11 +128,9 @@ plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fill
 plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
 
 # Plot ausgeben
-display(plot1)
-display(plot2)
-display(plot3)
-
-display(plot(plot1, plot2, plot3, layout=(1, 3)))
+display(plot(plot1,plot2, layout=(1, 2)))
+display(plot(plot1,plot3, layout=(1, 2)))
+display(plot(plot1, plot2, plot3, layout=(3, 1)))
 
 
 
