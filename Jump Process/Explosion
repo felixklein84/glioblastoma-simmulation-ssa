@@ -1,0 +1,43 @@
+using Random
+using Plots
+using Distributions
+
+Random.seed!(1234)
+
+# Funktion, um den nächsten Sprung und die Zeit bis zum Sprung zu berechnen
+function next_jump(i)
+    rate = (i + 1) * i / 2
+    t = rand(Exponential(1 / rate))
+    i_next = i + 1
+    return t, i_next
+end
+
+# Simulation des Prozesses
+function simulate_jump_process(max_time)
+    t = 0.0
+    i = 1
+    times = [0.0]
+    states = [i]
+    
+    while t < max_time
+        dt, i_next = next_jump(i)
+        t += dt
+        if t > max_time
+            break
+        end
+        i = i_next
+        push!(times, t)
+        push!(states, i)
+    end
+    
+    return times, states
+end
+
+# Setze die maximale Zeit auf 1.5
+max_time = 1.25
+
+# Simuliere den Jump-Prozess
+times, states = simulate_jump_process(max_time)
+
+# Plotte die Treppenfunktion mit Markern
+plot(times, states, seriestype=:steppost, label = false, xlabel="Zeit", ylabel="Zustand", title="Explosion in endlicher Zeit", xlim=(0, max_time + 0.1), ylim=(0, maximum(states)+1), marker=:circle)

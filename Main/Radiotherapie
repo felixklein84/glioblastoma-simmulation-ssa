@@ -4,7 +4,7 @@ using Distributions
 
 Random.seed!(1234)
 
-mutable struct ReactionStruct
+struct ReactionStruct
     transitions::Vector{Int}
     reac_prob::Function
 end
@@ -136,7 +136,12 @@ plot2 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="E
 plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fillalpha=0.3, label="MP", color="red")
 plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
 
+# Plot Tumorgröße vs Zeit
+plot3 = plot(time_points, total_cells, label="Radiotherapy", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "pink")
+
+
 # Plot ausgeben
 display(plot1)
 display(plot2)
 display(plot(plot1, plot2, layout=(1, 2)))
+display(plot3)
