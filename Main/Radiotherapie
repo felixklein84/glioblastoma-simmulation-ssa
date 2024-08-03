@@ -4,13 +4,13 @@ using Distributions
 
 Random.seed!(1234)
 
-struct ReactionStruct
+struct ReactionStruct_Radio
     transitions::Vector{Int}
     reac_prob::Function
 end
 
-mutable struct SSA_Struct
-    reactions::Vector{ReactionStruct}
+mutable struct SSA_Struct_Radio
+    reactions::Vector{ReactionStruct_Radio}
     state::Vector{Int}
     t::Float64
     time_points::Vector{Float64}
@@ -20,7 +20,7 @@ mutable struct SSA_Struct
 end
 
 function initialize_ssa(reactions, initial_state, radiotherapy_time)
-    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)], radiotherapy_time, false)
+    SSA_Struct_Radio(reactions, initial_state, 0.0, [0.0], [copy(initial_state)], radiotherapy_time, false)
 end
 
 function compute_total_prob(reactions, state)
@@ -31,7 +31,7 @@ function compute_total_prob(reactions, state)
     return total_prob
 end
 
-function update_state!(ssa::SSA_Struct, reaction_index)
+function update_state!(ssa::SSA_Struct_Radio, reaction_index)
     ssa.state .+= ssa.reactions[reaction_index].transitions
     push!(ssa.hit_counts, copy(ssa.state))
 end
@@ -47,7 +47,7 @@ function select_reaction(reactions, state, total_prob)
     end
 end
 
-function run_ssa!(ssa::SSA_Struct, max_time)
+function run_ssa!(ssa::SSA_Struct_Radio, max_time)
     while ssa.t < max_time
         if !ssa.radiotherapy_done && ssa.t >= ssa.radiotherapy_time
             ssa.state[1] = round(Int, rt_dying_percentage[1] * ssa.state[1])  # Reduziere EP auf Radiotherapie Sterbewahrscheinlichkeit
@@ -72,20 +72,20 @@ end
 
 function create_reactions(rates)
     return [
-        ReactionStruct([1, 0, 0], x -> rates[1] * x[1]),  # EP birth
-        ReactionStruct([-1, 0, 0], x -> rates[2] * x[1]),  # EP death
-        ReactionStruct([-1, 1, 0], x -> rates[3] * x[1]),  # EP to MP
-        ReactionStruct([-1, 0, 1], x -> rates[4] * x[1]),  # EP to Diff
+        ReactionStruct_Radio([1, 0, 0], x -> rates[1] * x[1]),  # EP birth
+        ReactionStruct_Radio([-1, 0, 0], x -> rates[2] * x[1]),  # EP death
+        ReactionStruct_Radio([-1, 1, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct_Radio([-1, 0, 1], x -> rates[4] * x[1]),  # EP to Diff
 
-        ReactionStruct([0, 1, 0], x -> rates[5] * x[2]),  # MP birth
-        ReactionStruct([0, -1, 0], x -> rates[6] * x[2]),  # MP death
-        ReactionStruct([1, -1, 0], x -> rates[7] * x[2]),  # MP to EP
-        ReactionStruct([0, -1, 1], x -> rates[8] * x[2]),  # MP to Diff
+        ReactionStruct_Radio([0, 1, 0], x -> rates[5] * x[2]),  # MP birth
+        ReactionStruct_Radio([0, -1, 0], x -> rates[6] * x[2]),  # MP death
+        ReactionStruct_Radio([1, -1, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct_Radio([0, -1, 1], x -> rates[8] * x[2]),  # MP to Diff
 
-        ReactionStruct([0, 0, 1], x -> rates[9] * x[3]),  # Diff birth
-        ReactionStruct([0, 0, -1], x -> rates[10] * x[3]),  # Diff death
-        ReactionStruct([1, 0, -1], x -> rates[11] * x[3]),  # Diff to EP
-        ReactionStruct([0, 1, -1], x -> rates[12] * x[3])   # Diff to MP
+        ReactionStruct_Radio([0, 0, 1], x -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct_Radio([0, 0, -1], x -> rates[10] * x[3]),  # Diff death
+        ReactionStruct_Radio([1, 0, -1], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct_Radio([0, 1, -1], x -> rates[12] * x[3])   # Diff to MP
     ]
 end
 
@@ -138,7 +138,6 @@ plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2
 
 # Plot Tumorgröße vs Zeit
 plot3 = plot(time_points, total_cells, label="Radiotherapy", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "pink")
-
 
 # Plot ausgeben
 display(plot1)

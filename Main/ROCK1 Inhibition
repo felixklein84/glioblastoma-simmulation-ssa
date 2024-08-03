@@ -4,13 +4,13 @@ using Distributions
 
 Random.seed!(1234)
 
-struct ReactionStruct
+struct ReactionStruct_Rock1
     transitions::Vector{Int}
     reac_prob::Function
 end
 
-mutable struct SSA_Struct
-    reactions::Vector{ReactionStruct}
+mutable struct SSA_Struct_Rock1
+    reactions::Vector{ReactionStruct_Rock1}
     state::Vector{Int}
     t::Float64
     time_points::Vector{Float64}  
@@ -18,14 +18,14 @@ mutable struct SSA_Struct
 end
 
 function initialize_ssa(reactions, initial_state)
-    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
+    SSA_Struct_Rock1(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
 end
 
 function compute_total_prob(reactions, state)
     sum(r.reac_prob(state) for r in reactions)
 end
 
-function update_state!(ssa::SSA_Struct, reaction_index)
+function update_state!(ssa::SSA_Struct_Rock1, reaction_index)
     ssa.state .+= ssa.reactions[reaction_index].transitions
     push!(ssa.hit_counts, copy(ssa.state)) 
 end
@@ -41,7 +41,7 @@ function select_reaction(reactions, state, total_prob)
     end
 end
 
-function run_ssa!(ssa::SSA_Struct, max_time)
+function run_ssa!(ssa::SSA_Struct_Rock1, max_time)
     while ssa.t < max_time
         total_prob = compute_total_prob(ssa.reactions, ssa.state)
         if total_prob == 0
@@ -58,22 +58,22 @@ end
 function create_reactions(rates)
     rock1_effect = (x) -> x[4] > 0 ? 0.25 * rates[1] : rates[1]
     return [
-        ReactionStruct([1, 0, 0, 0], x ->  rock1_effect(x) * x[1]),  # EP birth with ROCK1 effect
-        ReactionStruct([-1, 0, 0, 0], x -> rates[2] * x[1]),  # EP death
-        ReactionStruct([-1, 1, 0, 0], x -> rates[3] * x[1]),  # EP to MP
-        ReactionStruct([-1, 0, 1, 0], x -> rates[4] * x[1]),  # EP to Diff
+        ReactionStruct_Rock1([1, 0, 0, 0], x ->  rock1_effect(x) * x[1]),  # EP birth with ROCK1 effect
+        ReactionStruct_Rock1([-1, 0, 0, 0], x -> rates[2] * x[1]),  # EP death
+        ReactionStruct_Rock1([-1, 1, 0, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct_Rock1([-1, 0, 1, 0], x -> rates[4] * x[1]),  # EP to Diff
 
-        ReactionStruct([0, 1, 0, 0], x -> rates[5] * x[2]),  # MP birth
-        ReactionStruct([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP death
-        ReactionStruct([1, -1, 0, 0], x -> rates[7] * x[2]),  # MP to EP
-        ReactionStruct([0, -1, 1, 0], x -> rates[8] * x[2]),  # MP to Diff
+        ReactionStruct_Rock1([0, 1, 0, 0], x -> rates[5] * x[2]),  # MP birth
+        ReactionStruct_Rock1([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP death
+        ReactionStruct_Rock1([1, -1, 0, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct_Rock1([0, -1, 1, 0], x -> rates[8] * x[2]),  # MP to Diff
 
-        ReactionStruct([0, 0, 1, 0], x -> rates[9] * x[3]),  # Diff birth
-        ReactionStruct([0, 0, -1, 0], x -> rates[10] * x[3]),  # Diff death
-        ReactionStruct([1, 0, -1, 0], x -> rates[11] * x[3]),  # Diff to EP
-        ReactionStruct([0, 1, -1, 0], x -> rates[12] * x[3]),  # Diff to MP
+        ReactionStruct_Rock1([0, 0, 1, 0], x -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct_Rock1([0, 0, -1, 0], x -> rates[10] * x[3]),  # Diff death
+        ReactionStruct_Rock1([1, 0, -1, 0], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct_Rock1([0, 1, -1, 0], x -> rates[12] * x[3]),  # Diff to MP
 
-        ReactionStruct([0, 0, 0, -1], x -> rates[13] * x[4])  # ROCK1 Verfall
+        ReactionStruct_Rock1([0, 0, 0, -1], x -> rates[13] * x[4])  # ROCK1 Verfall
     ]
 end
 
