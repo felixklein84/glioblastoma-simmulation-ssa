@@ -104,7 +104,7 @@ state2_hits = [count[2] for count in hit_counts]
 state3_hits = [count[3] for count in hit_counts]
 
 # Plot für Anzahl der Zustände
-plot1 = plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot_phys_1 = plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
 plot!(time_points, state2_hits, label="MP", color = "red")
 plot!(time_points, state3_hits, label="Diff", color = "blue")
 
@@ -117,15 +117,9 @@ norm_state3_hits = state3_hits ./ total_cells
 cumulative_norm_state2_hits = norm_state1_hits + norm_state2_hits
 cumulative_norm_state3_hits = cumulative_norm_state2_hits + norm_state3_hits
 
-plot2 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="EP", xlabel="Time", ylabel="Proportion", title="Proportion of tumor cells vs Time", color="green")
+plot_phys_2 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="EP", xlabel="Time", ylabel="Proportion", title="Proportion of tumor cells vs Time", color="green")
 plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fillalpha=0.3, label="MP", color="red")
 plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
 
 # Tumorgröße vs Zeit
-plot3 = plot1 = plot(time_points, total_cells, label="Physiological", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "black")
-
-# Plot ausgeben
-display(plot1)
-display(plot2)
-display(plot(plot1, plot2, layout=(1, 2)))
-display(plot3)
+plot_phys_3 = plot1 = plot(time_points, total_cells, label="Physiological", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "black")
