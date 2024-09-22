@@ -2,7 +2,7 @@ using Random
 using Plots
 using Distributions
 
-Random.seed!(1234)
+Random.seed!(100)
 
 struct ReactionStruct_Rock1
     transitions::Vector{Int}
@@ -56,12 +56,12 @@ function run_ssa!(ssa::SSA_Struct_Rock1, max_time)
 end
 
 function create_reactions(rates)
-    rock1_effect = (x) -> x[4] > 0 ? 0.25 * rates[1] : rates[1]
+    rock1_effect = (x) -> x[4] > 0 ? 100 * rates[4] : rates[4]
     return [
-        ReactionStruct_Rock1([1, 0, 0, 0], x ->  rock1_effect(x) * x[1]),  # EP birth with ROCK1 effect
+        ReactionStruct_Rock1([1, 0, 0, 0], x ->  rates[1] * x[1]),  # EP birth with ROCK1 effect
         ReactionStruct_Rock1([-1, 0, 0, 0], x -> rates[2] * x[1]),  # EP death
         ReactionStruct_Rock1([-1, 1, 0, 0], x -> rates[3] * x[1]),  # EP to MP
-        ReactionStruct_Rock1([-1, 0, 1, 0], x -> rates[4] * x[1]),  # EP to Diff #Rock1 erhöht nur diese Übergangswahrscheinlichkeit
+        ReactionStruct_Rock1([-1, 0, 1, 0], x -> rock1_effect(x) * x[1]),  # EP to Diff 
 
         ReactionStruct_Rock1([0, 1, 0, 0], x -> rates[5] * x[2]),  # MP birth
         ReactionStruct_Rock1([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP death
@@ -87,12 +87,12 @@ end
 # Beispiel:
 initial_state = [10, 10, 10, 10] # EP, MP, Diff, ROCK1
 rates = [
-    0.01, 0, 0.0265, 0.0008, # EP: Geburt, Tod, EP -> MP, EP -> Diff
-    0,    0, 0.0175, 0.0121, # MP: Geburt, Tod, MP -> EP, MP -> Diff
-    0,    0, 0.0018, 0.0201, # Diff: Geburt, Tod, Diff -> EP, Diff -> MP
-    0.02 # ROCK1 Verfall
-    ]
-run_time = 300.0
+    0.0054, 0.0004, 0.0265, 0.0008,  # Raten für EP, MP, Diff, ROCK1
+    0.002, 0.0018, 0.0176, 0.0121,   # MP zu EP/Diff
+    0.001, 0, 0.0019, 0.0201,         # Diff zu EP/MP
+    0.011                            # ROCK1 Verfall
+]
+run_time = 336.0
 
 # Simulation ausführen
 ssa = run_simulation(initial_state, rates, run_time)
@@ -129,9 +129,4 @@ plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2
 
 # Tumorgröße vs Zeit
 plot_rock_4 = plot(time_points, total_cells, label="ROCK1", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "orange")
-
-
-
-
-
 

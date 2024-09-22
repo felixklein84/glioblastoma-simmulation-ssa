@@ -29,6 +29,8 @@ rock1_time = time_points
 rock1_tumor = total_cells
 EP_rock1 = state1_hits
 # Plot ausgeben
+display(plot_rock_2)
+display(plot_rock_3)
 display(plot(plot_rock_1,plot_rock_2, layout=(1, 2)))
 display(plot(plot_rock_1,plot_rock_3, layout=(1, 2)))
 display(plot(plot_rock_1, plot_rock_2, plot_rock_3, layout=(3, 1)))

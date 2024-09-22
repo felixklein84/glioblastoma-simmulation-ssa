@@ -1,0 +1,165 @@
+using Random
+using Plots
+using Distributions
+
+# Setze den Zufallszahlengenerator für Reproduzierbarkeit
+Random.seed!(100)
+
+# Struktur zur Beschreibung einer einzelnen Reaktion
+struct ReactionStruct
+    transitions::Vector{Int}  # Zustandsveränderungen der Zelltypen (EP, MP, Diff, ROCK1)
+    reac_prob::Function       # Funktion zur Berechnung der Reaktionswahrscheinlichkeit
+end
+
+# Struktur für den stochastischen Simulationsalgorithmus (SSA)
+mutable struct SSA_Struct
+    reactions::Vector{ReactionStruct}  # Liste der Reaktionen
+    state::Vector{Int}                 # Aktueller Zustand der Zellpopulationen
+    t::Float64                         # Aktuelle Zeit
+    time_points::Vector{Float64}       # Liste der Zeitpunkte der Ereignisse
+    hit_counts::Vector{Vector{Int}}    # Aufzeichnung der Zellpopulationen über die Zeit
+    radiotherapy_time::Float64         # Zeitpunkt der Radiotherapie
+    radiotherapy_done::Bool            # Flag, ob Radiotherapie durchgeführt wurde
+end
+
+# Initialisiere die SSA-Struktur
+function initialize_ssa(reactions, initial_state, radiotherapy_time)
+    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)], radiotherapy_time, false)
+end
+
+# Berechne die Gesamtwahrscheinlichkeit aller Reaktionen
+function compute_total_prob(reactions, state)
+    total_prob = 0.0
+    for r in reactions
+        total_prob += r.reac_prob(state)
+    end
+    return total_prob
+end
+
+# Aktualisiere den Zustand der Zellpopulationen nach einer Reaktion
+function update_state!(ssa::SSA_Struct, reaction_index)
+    ssa.state .+= ssa.reactions[reaction_index].transitions
+    push!(ssa.hit_counts, copy(ssa.state))
+end
+
+# Wähle eine Reaktion aus, basierend auf den Wahrscheinlichkeiten
+function select_reaction(reactions, state, total_prob)
+    r = rand() * total_prob
+    cumulative_sum = 0.0
+    for (i, reaction) in enumerate(reactions)
+        cumulative_sum += reaction.reac_prob(state)
+        if cumulative_sum > r
+            return i
+        end
+    end
+end
+
+# Führe die Simulation aus und wende die Radiotherapie zu einem festgelegten Zeitpunkt an
+function run_ssa!(ssa::SSA_Struct, max_time)
+    while ssa.t < max_time
+        # Überprüfe, ob die Radiotherapie durchgeführt werden soll
+        if !ssa.radiotherapy_done && ssa.t >= ssa.radiotherapy_time
+            # Reduziere Zellpopulationen nach der Radiotherapie
+            ssa.state[1] = round(Int, rt_dying_percentage[1] * ssa.state[1])  # EP
+            ssa.state[2] = round(Int, rt_dying_percentage[3] * ssa.state[2])  # MP
+            ssa.state[3] = round(Int, rt_dying_percentage[3] * ssa.state[3])  # Diff
+            ssa.radiotherapy_done = true
+        end
+
+        total_prob = compute_total_prob(ssa.reactions, ssa.state)
+        if total_prob == 0
+            break
+        end
+
+        # Berechne den Zeitpunkt bis zur nächsten Reaktion
+        dt = rand(Exponential(1 / total_prob))
+        ssa.t += dt
+        push!(ssa.time_points, ssa.t)
+
+        # Wähle und führe die nächste Reaktion aus
+        reaction_index = select_reaction(ssa.reactions, ssa.state, total_prob)
+        update_state!(ssa, reaction_index)
+    end
+end
+
+# Erstelle die Liste der Reaktionen, einschließlich des ROCK1-Effekts
+function create_reactions(rates)
+    rock1_effect = (x) -> x[4] > 0 ? 100 * rates[4] : rates[4]  # ROCK1-Effekt
+    return [
+        ReactionStruct([1, 0, 0, 0], x ->  rates[1] * x[1]),         # EP Geburt
+        ReactionStruct([-1, 0, 0, 0], x -> rates[2] * x[1]),         # EP Tod
+        ReactionStruct([-1, 1, 0, 0], x -> rates[3] * x[1]),         # EP zu MP
+        ReactionStruct([-1, 0, 1, 0], x -> rock1_effect(x) * x[1]),  # EP zu Diff
+
+        ReactionStruct([0, 1, 0, 0], x -> rates[5] * x[2]),   # MP Geburt
+        ReactionStruct([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP Tod
+        ReactionStruct([1, -1, 0, 0], x -> rates[7] * x[2]),  # MP zu EP
+        ReactionStruct([0, -1, 1, 0], x -> rates[8] * x[2]),  # MP zu Diff
+
+        ReactionStruct([0, 0, 1, 0], x -> rates[9] * x[3]),    # Diff Geburt
+        ReactionStruct([0, 0, -1, 0], x -> rates[10] * x[3]),  # Diff Tod
+        ReactionStruct([1, 0, -1, 0], x -> rates[11] * x[3]),  # Diff zu EP
+        ReactionStruct([0, 1, -1, 0], x -> rates[12] * x[3]),  # Diff zu MP
+
+        ReactionStruct([0, 0, 0, -1], x -> rates[13] * x[4])   # ROCK1 Verfall
+    ]
+end
+
+# Führe die Simulation mit den angegebenen Raten und initialen Zuständen durch
+function run_simulation(initial_state, rates, max_time, radiotherapy_time)
+    reactions = create_reactions(rates)
+    ssa = initialize_ssa(reactions, initial_state, radiotherapy_time)
+    run_ssa!(ssa, max_time)
+    return ssa
+end
+
+# Beispiel Simulation: ROCK1-Inhibition ohne Radiotherapie 
+# Um andere Beispiele zu simmulieren, einfach nur radiotherapy_time anpassen und den Anfangszustand von ROCK1 auf 0 und die rates von Rock1-Verfall auf 0 setzen
+initial_state = [10, 10, 10, 10]  # Anfangszustände: EP, MP, Diff, ROCK1
+rates = [
+    0.0054, 0.0004, 0.0265, 0.0008,  # Raten für EP, MP, Diff, ROCK1
+    0.002, 0.0018, 0.0176, 0.0121,   # MP zu EP/Diff
+    0.001, 0, 0.0019, 0.0201,        # Diff zu EP/MP
+    0.011                            # ROCK1-Verfall
+]
+rt_dying_percentage = [0.0952380952380952, 0.13953488372093, 0.333333333333333]  # Sterbewahrscheinlichkeiten nach Radiotherapie
+radiotherapy_time = 400.0  # Zeitpunkt der Radiotherapie
+run_time = 336.0           # Simulationszeitraum
+
+# Simulation ausführen
+ssa = run_simulation(initial_state, rates, run_time, radiotherapy_time)
+
+# Extrahiere die Zeitpunkte und Zellpopulationen aus der Simulation
+time_points = ssa.time_points
+hit_counts = ssa.hit_counts
+
+# Trenne die Zellpopulationen für die verschiedenen Zustände
+state1_hits = [count[1] for count in hit_counts]  # EP
+state2_hits = [count[2] for count in hit_counts]  # MP
+state3_hits = [count[3] for count in hit_counts]  # Diff
+rock1_hits = [count[4] for count in hit_counts]   # ROCK1
+
+# Plot für den Verfall von ROCK1
+plot_0 = plot(time_points, rock1_hits, label="ROCK1", xlabel="Time", ylabel="# of ROCK1", title="# of ROCK1 vs Time", color = "purple")
+
+# Plot für die Anzahl der Tumorzellen in verschiedenen Zuständen über die Zeit
+plot_1 = plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot!(time_points, state2_hits, label="MP", color = "red")
+plot!(time_points, state3_hits, label="Diff", color = "blue")
+
+# Plot für den Anteil der Zellen in jedem Zustand
+total_cells = state1_hits .+ state2_hits .+ state3_hits
+norm_state1_hits = state1_hits ./ total_cells
+norm_state2_hits = state2_hits ./ total_cells
+norm_state3_hits = state3_hits ./ total_cells
+
+cumulative_norm_state2_hits = norm_state1_hits + norm_state2_hits
+cumulative_norm_state3_hits = cumulative_norm_state2_hits + norm_state3_hits
+
+# Plot der Zellanteile im Zeitverlauf
+plot_2 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="EP", xlabel="Time", ylabel="Proportion", title="Proportion of tumor cells vs Time", color="green")
+plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fillalpha=0.3, label="MP", color="red")
+plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
+
+# Plot für die Tumorgröße im Zeitverlauf
+plot_3 = plot(time_points, total_cells, label="Total", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "pink")

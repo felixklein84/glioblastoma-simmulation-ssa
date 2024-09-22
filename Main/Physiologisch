@@ -2,15 +2,15 @@ using Random
 using Plots
 using Distributions
 
-Random.seed!(1234)
+Random.seed!(100)
 
-struct ReactionStruct
+struct ReactionStruct_Physio
     transitions::Vector{Int}
     reac_prob::Function
 end
 
-mutable struct SSA_Struct
-    reactions::Vector{ReactionStruct}
+mutable struct SSA_Struct_Physio
+    reactions::Vector{ReactionStruct_Physio}
     state::Vector{Int}
     t::Float64
     time_points::Vector{Float64}  
@@ -18,14 +18,14 @@ mutable struct SSA_Struct
 end
 
 function initialize_ssa(reactions, initial_state)
-    SSA_Struct(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
+    SSA_Struct_Physio(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
 end
 
 function compute_total_prob(reactions, state)
     sum(r.reac_prob(state) for r in reactions)
 end
 
-function update_state!(ssa::SSA_Struct, reaction_index)
+function update_state!(ssa::SSA_Struct_Physio, reaction_index)
     ssa.state .+= ssa.reactions[reaction_index].transitions
     push!(ssa.hit_counts, copy(ssa.state)) 
 end
@@ -41,7 +41,7 @@ function select_reaction(reactions, state, total_prob)
     end
 end
 
-function run_ssa!(ssa::SSA_Struct, max_time)
+function run_ssa!(ssa::SSA_Struct_Physio, max_time)
     while ssa.t < max_time
         total_prob = compute_total_prob(ssa.reactions, ssa.state)
         if total_prob == 0
@@ -59,20 +59,20 @@ end
 
 function create_reactions(rates)
     return [
-        ReactionStruct([1, 0, 0], x -> rates[1] * x[1]),  # EP birth
-        ReactionStruct([-1, 0, 0], x -> rates[2] * x[1]),  # EP death
-        ReactionStruct([-1, 1, 0], x -> rates[3] * x[1]),  # EP to MP
-        ReactionStruct([-1, 0, 1], x -> rates[4] * x[1]),  # EP to Diff
+        ReactionStruct_Physio([1, 0, 0], x -> rates[1] * x[1]),  # EP birth
+        ReactionStruct_Physio([-1, 0, 0], x -> rates[2] * x[1]),  # EP death
+        ReactionStruct_Physio([-1, 1, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct_Physio([-1, 0, 1], x -> rates[4] * x[1]),  # EP to Diff
 
-        ReactionStruct([0, 1, 0], x -> rates[5] * x[2]),  # MP birth
-        ReactionStruct([0, -1, 0], x -> rates[6] * x[2]),  # MP death
-        ReactionStruct([1, -1, 0], x -> rates[7] * x[2]),  # MP to EP
-        ReactionStruct([0, -1, 1], x -> rates[8] * x[2]),  # MP to Diff
+        ReactionStruct_Physio([0, 1, 0], x -> rates[5] * x[2]),  # MP birth
+        ReactionStruct_Physio([0, -1, 0], x -> rates[6] * x[2]),  # MP death
+        ReactionStruct_Physio([1, -1, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct_Physio([0, -1, 1], x -> rates[8] * x[2]),  # MP to Diff
 
-        ReactionStruct([0, 0, 1], x -> rates[9] * x[3]),  # Diff birth
-        ReactionStruct([0, 0, -1], x -> rates[10] * x[3]),  # Diff death
-        ReactionStruct([1, 0, -1], x -> rates[11] * x[3]),  # Diff to EP
-        ReactionStruct([0, 1, -1], x -> rates[12] * x[3])  # Diff to MP
+        ReactionStruct_Physio([0, 0, 1], x -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct_Physio([0, 0, -1], x -> rates[10] * x[3]),  # Diff death
+        ReactionStruct_Physio([1, 0, -1], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct_Physio([0, 1, -1], x -> rates[12] * x[3])  # Diff to MP
     ]
 end
 
@@ -86,11 +86,11 @@ end
 # Beispiel:
 initial_state = [10, 10, 10]
 rates = [
-    0.01, 0, 0.0265, 0.0008,
-    0,    0, 0.0175, 0.0121, 
-    0,    0, 0.0018, 0.0201
-    ]
-run_time = 300.0
+    0.0054, 0.0004, 0.0265, 0.0008,  # Raten für EP, MP, Diff, ROCK1
+    0.002, 0.0018, 0.0176, 0.0121,   # MP zu EP/Diff
+    0.001, 0, 0.0019, 0.0201        # Diff zu EP/MP
+]
+run_time = 336.0
 
 # Simulation ausführen
 ssa = run_simulation(initial_state, rates, run_time)
@@ -123,3 +123,4 @@ plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2
 
 # Tumorgröße vs Zeit
 plot_phys_3 = plot1 = plot(time_points, total_cells, label="Physiological", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "black")
+
