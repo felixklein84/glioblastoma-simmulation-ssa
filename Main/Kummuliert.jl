@@ -37,17 +37,29 @@ display(plot(plot_rock_1, plot_rock_2, plot_rock_3, layout=(3, 1)))
 display(plot_rock_4)
 
 
+# ROCK1 + Radiotherapy
+include("Bachelor Arbeit Code")
+comb_time = time_points
+comb_tumor = total_cells
+EP_comb = state1_hits
+# Plot ausgeben
+display(plot(plot_0,plot_1,layout=(1, 2)))
+display(plot_2)
+display(plot_3)
+
 
 # Tumorsize vs. Time
 plot_tumorsize = plot(phys_time, phys_tumor, label="Physiological", xlabel="Time in hours", ylabel="Tumorsize", title="Tumorsize vs. Time", lw=2)
 plot!(radio_time, radio_tumor, label="Radiotherapy", lw=2)
 plot!(rock1_time, rock1_tumor, label="ROCK1 Inhibition", lw=2)
+plot!(comb_time, comb_tumor, label="ROCK1 Inhibition + Radiotherapy", lw=2)
 display(plot_tumorsize)
 
 # EP's vs. Time
 plot_EP_all = plot(phys_time, EP_Phys, label="Physiological", xlabel="Time in hours", ylabel="# of EP's", title="# of EP's vs. Time", lw=2)
 plot!(radio_time, EP_radio, label="Radiotherapy", lw=2)
 plot!(rock1_time, EP_rock1, label="ROCK1 Inhibition", lw=2)
+plot!(comb_time, EP_comb, label="ROCK1 Inhibition + Radiotherapy", lw=2)
 display(plot_EP_all)
 
 # Interolation

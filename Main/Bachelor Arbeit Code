@@ -123,7 +123,7 @@ rates = [
     0.011                            # ROCK1-Verfall
 ]
 rt_dying_percentage = [0.0952380952380952, 0.13953488372093, 0.333333333333333]  # Sterbewahrscheinlichkeiten nach Radiotherapie
-radiotherapy_time = 400.0  # Zeitpunkt der Radiotherapie
+radiotherapy_time = 100.0  # Zeitpunkt der Radiotherapie
 run_time = 336.0           # Simulationszeitraum
 
 # Simulation ausführen
