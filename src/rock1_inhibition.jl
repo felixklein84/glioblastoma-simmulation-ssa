@@ -1,0 +1,135 @@
+# Reproducibility fix applied: added Pkg.activate and .jl extension.
+# All model logic, parameters, and algorithm are identical to original_code/ROCK1 Inhibition.
+import Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
+
+using Random
+using Plots
+using Distributions
+
+Random.seed!(100)
+
+struct ReactionStruct_Rock1
+    transitions::Vector{Int}
+    reac_prob::Function
+end
+
+mutable struct SSA_Struct_Rock1
+    reactions::Vector{ReactionStruct_Rock1}
+    state::Vector{Int}
+    t::Float64
+    time_points::Vector{Float64}
+    hit_counts::Vector{Vector{Int}}
+end
+
+function initialize_ssa(reactions, initial_state)
+    SSA_Struct_Rock1(reactions, initial_state, 0.0, [0.0], [copy(initial_state)])
+end
+
+function compute_total_prob(reactions, state)
+    sum(r.reac_prob(state) for r in reactions)
+end
+
+function update_state!(ssa::SSA_Struct_Rock1, reaction_index)
+    ssa.state .+= ssa.reactions[reaction_index].transitions
+    push!(ssa.hit_counts, copy(ssa.state))
+end
+
+function select_reaction(reactions, state, total_prob)
+    r = rand() * total_prob
+    cumulative_sum = 0.0
+    for (i, reaction) in enumerate(reactions)
+        cumulative_sum += reaction.reac_prob(state)
+        if cumulative_sum > r
+            return i
+        end
+    end
+end
+
+function run_ssa!(ssa::SSA_Struct_Rock1, max_time)
+    while ssa.t < max_time
+        total_prob = compute_total_prob(ssa.reactions, ssa.state)
+        if total_prob == 0
+            break
+        end
+        dt = rand(Exponential(1 / total_prob))
+        ssa.t += dt
+        push!(ssa.time_points, ssa.t)
+        reaction_index = select_reaction(ssa.reactions, ssa.state, total_prob)
+        update_state!(ssa, reaction_index)
+    end
+end
+
+function create_reactions(rates)
+    rock1_effect = (x) -> x[4] > 0 ? 100 * rates[4] : rates[4]
+    return [
+        ReactionStruct_Rock1([1, 0, 0, 0], x ->  rates[1] * x[1]),  # EP birth with ROCK1 effect
+        ReactionStruct_Rock1([-1, 0, 0, 0], x -> rates[2] * x[1]),  # EP death
+        ReactionStruct_Rock1([-1, 1, 0, 0], x -> rates[3] * x[1]),  # EP to MP
+        ReactionStruct_Rock1([-1, 0, 1, 0], x -> rock1_effect(x) * x[1]),  # EP to Diff
+
+        ReactionStruct_Rock1([0, 1, 0, 0], x -> rates[5] * x[2]),  # MP birth
+        ReactionStruct_Rock1([0, -1, 0, 0], x -> rates[6] * x[2]),  # MP death
+        ReactionStruct_Rock1([1, -1, 0, 0], x -> rates[7] * x[2]),  # MP to EP
+        ReactionStruct_Rock1([0, -1, 1, 0], x -> rates[8] * x[2]),  # MP to Diff
+
+        ReactionStruct_Rock1([0, 0, 1, 0], x -> rates[9] * x[3]),  # Diff birth
+        ReactionStruct_Rock1([0, 0, -1, 0], x -> rates[10] * x[3]),  # Diff death
+        ReactionStruct_Rock1([1, 0, -1, 0], x -> rates[11] * x[3]),  # Diff to EP
+        ReactionStruct_Rock1([0, 1, -1, 0], x -> rates[12] * x[3]),  # Diff to MP
+
+        ReactionStruct_Rock1([0, 0, 0, -1], x -> rates[13] * x[4])  # ROCK1 Verfall
+    ]
+end
+
+function run_simulation(initial_state, rates, max_time)
+    reactions = create_reactions(rates)
+    ssa = initialize_ssa(reactions, initial_state)
+    run_ssa!(ssa, max_time)
+    return ssa
+end
+
+# Beispiel:
+initial_state = [10, 10, 10, 10] # EP, MP, Diff, ROCK1
+rates = [
+    0.0054, 0.0004, 0.0265, 0.0008,  # Raten für EP, MP, Diff, ROCK1
+    0.002, 0.0018, 0.0176, 0.0121,   # MP zu EP/Diff
+    0.001, 0, 0.0019, 0.0201,         # Diff zu EP/MP
+    0.011                            # ROCK1 Verfall
+]
+run_time = 336.0
+
+# Simulation ausführen
+ssa = run_simulation(initial_state, rates, run_time)
+
+time_points = ssa.time_points
+hit_counts = ssa.hit_counts
+
+# Anzahl der Zustände trennen
+state1_hits = [count[1] for count in hit_counts]
+state2_hits = [count[2] for count in hit_counts]
+state3_hits = [count[3] for count in hit_counts]
+rock1_hits = [count[4] for count in hit_counts]
+
+# Plot für ROCK1
+plot_rock_1 = plot(time_points, rock1_hits, label="ROCK1", xlabel="Time", ylabel="# of ROCK1", title="# of ROCK1 vs Time", color = "purple")
+
+# Plot für Anzahl der Zustände
+plot_rock_2 = plot(time_points, state1_hits, label="EP", xlabel="Time", ylabel="# of tumor cells", title="# of tumor cells vs Time", color = "green")
+plot!(time_points, state2_hits, label="MP", color = "red")
+plot!(time_points, state3_hits, label="Diff", color = "blue")
+
+# Plot für Anteil der Zustände
+total_cells = state1_hits .+ state2_hits .+ state3_hits
+norm_state1_hits = state1_hits ./ total_cells
+norm_state2_hits = state2_hits ./ total_cells
+norm_state3_hits = state3_hits ./ total_cells
+
+cumulative_norm_state2_hits = norm_state1_hits + norm_state2_hits
+cumulative_norm_state3_hits = cumulative_norm_state2_hits + norm_state3_hits
+
+plot_rock_3 = plot(time_points, norm_state1_hits, fillrange=0, fillalpha=0.3, label="EP", xlabel="Time", ylabel="Proportion", title="Proportion of tumor cells vs Time", color="green")
+plot!(time_points, cumulative_norm_state2_hits, fillrange=norm_state1_hits, fillalpha=0.3, label="MP", color="red")
+plot!(time_points, cumulative_norm_state3_hits, fillrange=cumulative_norm_state2_hits, fillalpha=0.3, label="Diff", color="blue")
+
+# Tumorgröße vs Zeit
+plot_rock_4 = plot(time_points, total_cells, label="ROCK1", xlabel="Time", ylabel="Tumorsize", title="Tumorsize vs Time", color = "orange")
